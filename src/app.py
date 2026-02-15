@@ -1,36 +1,68 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 # --------------------------
 # Page Config
 # --------------------------
-st.set_page_config(
-    page_title="Bank Marketing Predictor",
-    page_icon="📊",
-    layout="wide"
-)
+st.set_page_config(page_title="Bank Marketing Predictor", layout="wide")
+
+MODEL_PATH = "models/bank_marketing_rf.pkl"
+FEATURE_PATH = "models/feature_columns.pkl"
+DATA_PATH = "data/bank-additional-full.csv"
 
 # --------------------------
-# Load Model and Columns
+# Train model if not exists
 # --------------------------
-model = joblib.load("models/bank_marketing_rf.pkl")
-feature_columns = joblib.load("models/feature_columns.pkl")
+def train_and_save_model():
+    df = pd.read_csv(DATA_PATH, sep=";")
+    df['y'] = df['y'].map({'no': 0, 'yes': 1})
+
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    X = pd.get_dummies(X, drop_first=True)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42,
+        class_weight='balanced'
+    )
+
+    model.fit(X_train, y_train)
+
+    os.makedirs("models", exist_ok=True)
+    joblib.dump(model, MODEL_PATH)
+    joblib.dump(X.columns.tolist(), FEATURE_PATH)
+
+    return model, X.columns.tolist()
 
 # --------------------------
-# Header Section
+# Load or Train Model
+# --------------------------
+if os.path.exists(MODEL_PATH) and os.path.exists(FEATURE_PATH):
+    model = joblib.load(MODEL_PATH)
+    feature_columns = joblib.load(FEATURE_PATH)
+else:
+    model, feature_columns = train_and_save_model()
+
+# --------------------------
+# Title
 # --------------------------
 st.title("📊 Bank Marketing Subscription Predictor")
-st.markdown(
-    "This ML-powered application predicts whether a customer will subscribe "
-    "to a bank term deposit based on campaign data."
-)
-
+st.write("Enter customer details to predict subscription outcome.")
 st.divider()
 
 # --------------------------
-# Layout (2 Columns)
+# Layout
 # --------------------------
 col1, col2 = st.columns(2)
 
@@ -48,7 +80,7 @@ with col2:
 st.divider()
 
 # --------------------------
-# Create Input DataFrame
+# Prepare Input
 # --------------------------
 input_dict = {
     "age": age,
@@ -62,7 +94,6 @@ input_dict = {
 
 input_df = pd.DataFrame([input_dict])
 
-# Add missing columns (important for model compatibility)
 for col in feature_columns:
     if col not in input_df.columns:
         input_df[col] = 0
@@ -77,32 +108,19 @@ if st.button("🔮 Predict"):
     prediction = model.predict(input_df)[0]
     probability = model.predict_proba(input_df)[0][1]
 
-    st.subheader("📌 Prediction Result")
+    st.subheader("Prediction Result")
 
     if prediction == 1:
         st.success("✅ Customer is likely to SUBSCRIBE")
     else:
         st.error("❌ Customer is likely to NOT SUBSCRIBE")
 
-    st.markdown(f"### 📈 Subscription Probability: **{probability:.2%}**")
-
-    # Progress bar
+    st.write(f"📈 Probability of Subscription: **{probability:.2%}**")
     st.progress(float(probability))
-
-    # Risk Interpretation
-    if probability > 0.75:
-        st.info("🔥 High likelihood of subscription.")
-    elif probability > 0.40:
-        st.warning("⚠️ Moderate likelihood of subscription.")
-    else:
-        st.write("Low likelihood of subscription.")
 
     st.divider()
 
-    # --------------------------
-    # Feature Importance
-    # --------------------------
-    st.subheader("📊 Top 10 Important Features (Random Forest)")
+    st.subheader("📊 Top Feature Importance")
 
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1][:10]
@@ -114,17 +132,5 @@ if st.button("🔮 Predict"):
 
     st.bar_chart(top_features.set_index("Feature"))
 
-    st.divider()
-
-# --------------------------
-# Model Info Section
-# --------------------------
-st.markdown("### 🤖 Model Information")
-st.write("• Algorithm Used: Random Forest Classifier")
-st.write("• Training Accuracy: ~91%")
-st.write("• Handles Imbalanced Data using class_weight='balanced'")
-st.write("• Features engineered using one-hot encoding")
-
 st.divider()
-
 st.caption("Developed by Krisha Trivedi | Machine Learning Project")
