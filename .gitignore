@@ -2,17 +2,14 @@
 venv/
 .env
 
-# Python cache files
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Mac system files
+# Mac
 .DS_Store
 
-# Streamlit cache
-.streamlit/
-
-# VS Code settings (optional)
-.vscode/
+# ML artifacts
+models/
