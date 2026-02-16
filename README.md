@@ -77,3 +77,16 @@ streamlit run src/app.py
 
 Krisha Trivedi  
 Machine Learning Enthusiast  
+
+---
+
+## 📸 App Screenshots
+
+### 🏠 Home Page
+![Home Page](home.jpeg)
+
+---
+
+### 🔮 Prediction Page
+![Prediction Page](prediction.jpeg)
+
